@@ -84,6 +84,9 @@ int main(int, char**)
 
         std::unique_ptr<Image> image1 = std::make_unique<Image>(*image.get());
         PostProcess::BoxBlur(image1->colorBuffer);
+        PostProcess::Brightness(image1->colorBuffer, 50);
+        PostProcess::Noise(image1->colorBuffer, 50);
+        PostProcess::ColorBalance(image1->colorBuffer, 0, 128, 0);
         framebuffer->DrawImage(0, 300, image1.get());
 
         std::unique_ptr<Image> image2 = std::make_unique<Image>(*image.get());

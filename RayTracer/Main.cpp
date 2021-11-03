@@ -2,7 +2,10 @@
 #include "Framebuffer.h"
 #include "Image.h"
 #include "PostProcess.h"
-#include "ColorBuffer.h"
+#include "Tracer.h"
+#include "Scene.h"
+#include "Plane.h"
+#include "Camera.h"
 
 #include <iostream>
 #include <SDL.h>
@@ -17,6 +20,34 @@ int main(int, char**)
 
 	std::unique_ptr<Framebuffer> framebuffer = std::make_unique<Framebuffer>(renderer.get(), renderer->width, renderer->height);
 
+	//Tracer tracer;
+
+	// ray tracer
+	std::unique_ptr<Tracer> tracer = std::make_unique<Tracer>();
+
+	float focalLength = glm::length(glm::vec3{ 1, 0, 0 } - glm::vec3{ 0, 0, 0 });
+
+	std::unique_ptr<Camera> camera = std::make_unique<Camera>(glm::vec3{ 5, 5, 1 }, glm::vec3{ 0, 0, -5 }, glm::vec3{ 0, 1, 0 }, 90.0f, glm::ivec2{ framebuffer->colorBuffer.width, framebuffer->colorBuffer.height }, 0.01f, focalLength);
+
+	// scene
+	std::unique_ptr<Scene> scene = std::make_unique<Scene>();
+	//std::unique_ptr<Sphere> sphere = std::make_unique<Sphere>(glm::vec3{ 0, 0, -10 }, 3.0f);
+	//scene->Add(std::move(std::make_unique<Plane>(glm::vec3{ 0, -5, 0 }, glm::vec3{ 0, 1, 0 })));
+	//scene->Add(std::move(sphere));
+
+	scene->Add(std::move(std::make_unique<Sphere>(glm::vec3{ 0, 0, -10 }, 3.0f,
+		std::make_shared<Lambertian>(glm::vec3{ 1, 0, 0 }))));
+	scene->Add(std::move(std::make_unique<Sphere>(glm::vec3{ -1, 5, -5 }, 1.5f,
+		std::make_shared<Lambertian>(glm::vec3{ 1, 0, 1 }))));
+	scene->Add(std::move(std::make_unique<Sphere>(glm::vec3{ 3, 3, -8 }, 1.0f,
+		std::make_shared<Metal>(glm::vec3{ 0, 1, 0 }, 0.0f))));
+	scene->Add(std::move(std::make_unique<Plane>(glm::vec3{ 0, -3, 0 }, glm::vec3{ 0, 1, 0 },
+		std::make_shared<Metal>(glm::vec3{ 0.5f, 0.5f, 0.5f }, 0.0f))));
+
+	framebuffer->Clear({ 0, 0, 0, 0 });
+	tracer->Trace(framebuffer->colorBuffer, scene.get(), camera.get());
+	framebuffer->Update();
+
 	bool quit = false;
 	SDL_Event event;
 	while (!quit)
@@ -28,79 +59,6 @@ int main(int, char**)
 			quit = true;
 			break;
 		}
-
-		framebuffer->Clear({ 0, 0, 0, 0 });
-        /*for (int i = 0; i < 100; i++)
-        {
-            framebuffer->DrawPoint(rand() % framebuffer->width, rand() % framebuffer->height, { 0, 255, 0, 0 });
-        }
-        for (int i = 0; i < 20; i++)
-        {
-            framebuffer->DrawRect(rand() % framebuffer->width, rand() % framebuffer->height, 20, 20, { 0, 0, 255, 0 });
-        }
-        for (int i = 0; i < 20; i++)
-        {
-            framebuffer->DrawLine(framebuffer->width >> 1, framebuffer->height >> 1, rand() % framebuffer->width, rand() % framebuffer->height, { 255, 255, 255, 0 });
-        }
-
-
-        for (int i = 0; i < 10; i++)
-        {
-            framebuffer->DrawQuadraticCurve(
-                rand() % framebuffer->width, rand() % framebuffer->height,
-                rand() % framebuffer->width, rand() % framebuffer->height,
-                rand() % framebuffer->width, rand() % framebuffer->height, 30, { 255, 255, 0, 255 });
-        }
-        for (int i = 0; i < 10; i++)
-        {
-            framebuffer->DrawCubicCurve(
-                rand() % framebuffer->width, rand() % framebuffer->height,
-                rand() % framebuffer->width, rand() % framebuffer->height,
-                rand() % framebuffer->width, rand() % framebuffer->height,
-                rand() % framebuffer->width, rand() % framebuffer->height,
-                30, { 0, 255, 255, 255 });
-        }
-        for (int i = 0; i < 5; i++)
-        {
-            framebuffer->DrawTriangle(rand() % framebuffer->width, rand() % framebuffer->height, rand() % framebuffer->width, rand() % framebuffer->height, rand() % framebuffer->width, rand() % framebuffer->height, { 255, 0, 150, 255 });
-        }
-        for (int i = 0; i < 5; i++)
-        {
-            framebuffer->DrawCircle(rand() % framebuffer->width, rand() % framebuffer->height, 10, {255, 255, 255, 255});
-        }*/
-
-        std::unique_ptr<Image> image = std::make_unique<Image>();
-        image->Load("C:/Users/Grays/source/repos/GAT350/Build/x64/Resources/jesus.bmp", 255);
-
-        framebuffer->DrawImage(300, 30, image.get());
-
-        //PostProcess::Invert(framebuffer->colorBuffer);
-        //PostProcess::Monochrome(framebuffer->colorBuffer);
-        //PostProcess::Noise(framebuffer->colorBuffer, 50);
-        //PostProcess::Brightness(framebuffer->colorBuffer, 50);
-        //PostProcess::ColorBalance(framebuffer->colorBuffer, 100, 0, 0);
-        //PostProcess::Threshold(framebuffer->colorBuffer, 200);
-
-
-        std::unique_ptr<Image> image1 = std::make_unique<Image>(*image.get());
-        PostProcess::BoxBlur(image1->colorBuffer);
-        framebuffer->DrawImage(0, 300, image1.get());
-
-        std::unique_ptr<Image> image2 = std::make_unique<Image>(*image.get());
-        PostProcess::GaussianBlur(image2->colorBuffer);
-        framebuffer->DrawImage(200, 300, image2.get());
-
-        std::unique_ptr<Image> image3= std::make_unique<Image>(*image.get());
-        PostProcess::Sharpen(image3->colorBuffer);
-        framebuffer->DrawImage(400, 300, image3.get());
-
-        std::unique_ptr<Image> image4 = std::make_unique<Image>(*image.get());
-        PostProcess::Monochrome(image4->colorBuffer);
-        PostProcess::Edge(image4->colorBuffer, 100);
-        framebuffer->DrawImage(600, 300, image4.get());
-
-
-		framebuffer->Update();
 
 		renderer->CopyBuffer(framebuffer.get());
 		renderer->Present();
